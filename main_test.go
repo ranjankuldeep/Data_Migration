@@ -1,18 +1,21 @@
 package main
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestGenerateInsertSQL(t *testing.T) {
 
 	tests := []struct {
 		name    string
 		oplog   string
-		want    string
+		want    []string
 		wantErr bool
 	}{
 		{name: "Empty Operation",
 			oplog:   "",
-			want:    "",
+			want:    []string{},
 			wantErr: true,
 		},
 		{name: "Insert Operation", oplog: `{
@@ -26,7 +29,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 			  "date_of_birth" : "2000-01-30"
 			}
 		  }`,
-			want:    "INSERT INTO test.student (_id, date_of_birth, is_graduated, name, roll_no) VALUES ('635b79e231d82a8ab1de863b', '2000-01-30', false, 'Selena Miller', 51);",
+			want:    []string{"INSERT INTO test.student (_id, date_of_birth, is_graduated, name, roll_no) VALUES ('635b79e231d82a8ab1de863b', '2000-01-30', false, 'Selena Miller', 51);"},
 			wantErr: false},
 		{name: "Update Operation -set", oplog: `{
 				"op": "u",
@@ -43,7 +46,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 				   "_id": "635b79e231d82a8ab1de863b"
 				}
 			 }`,
-			want:    "UPDATE test.student SET is_graduated = true WHERE _id = '635b79e231d82a8ab1de863b';",
+			want:    []string{"UPDATE test.student SET is_graduated = true WHERE _id = '635b79e231d82a8ab1de863b';"},
 			wantErr: false},
 		{name: "Update Operation -set with multiple option", oplog: `{
 				"op": "u",
@@ -61,7 +64,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 				   "_id": "635b79e231d82a8ab1de863b"
 				}
 			 }`,
-			want:    "UPDATE test.student SET is_graduated = true, roll_no = 51 WHERE _id = '635b79e231d82a8ab1de863b';",
+			want:    []string{"UPDATE test.student SET is_graduated = true, roll_no = 51 WHERE _id = '635b79e231d82a8ab1de863b';"},
 			wantErr: false},
 		{name: "Update Operation -unset", oplog: `{
 				"op": "u",
@@ -78,7 +81,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 				   "_id": "635b79e231d82a8ab1de863b"
 				}
 			 }`,
-			want:    "UPDATE test.student SET roll_no = NULL WHERE _id = '635b79e231d82a8ab1de863b';",
+			want:    []string{"UPDATE test.student SET roll_no = NULL WHERE _id = '635b79e231d82a8ab1de863b';"},
 			wantErr: false},
 		{name: "Delete Operation", oplog: `{
 				"op": "d",
@@ -87,7 +90,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 				  "_id": "635b79e231d82a8ab1de863b"
 				}
 			  }`,
-			want:    "DELETE FROM test.student WHERE _id = '635b79e231d82a8ab1de863b';",
+			want:    []string{"DELETE FROM test.student WHERE _id = '635b79e231d82a8ab1de863b';"},
 			wantErr: false},
 	}
 	for _, tt := range tests {
@@ -97,7 +100,7 @@ func TestGenerateInsertSQL(t *testing.T) {
 				t.Errorf("GenerateSQL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GenerateSQL() = %v, want %v", got, tt.want)
 			}
 		})
