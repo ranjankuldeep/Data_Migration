@@ -20,22 +20,80 @@ type OplogEntry struct {
 	//here interface{} is any type so o is type of kind of javascript object
 }
 
-func GenerateSQL(oplog string) (string, error) {
+func generateCreateSchemaSQL(oplogObj OplogEntry, sqls []string) []string {
+	nsParts := strings.Split(oplogObj.NS, ".")
+	sqls = append(sqls, fmt.Sprintf("CREATE SCHEMA %s;", nsParts[0]))
+	return sqls
+}
+func getColumnSQLDataType(columnName string, value interface{}) string {
+	colDataType := ""
+	switch value.(type) {
+	case int, int8, int16, int32, int64:
+		colDataType = "INTEGER"
+	case float32, float64:
+		colDataType = "FLOAT"
+	case bool:
+		colDataType = "BOOLEAN"
+	default:
+		colDataType = "VARCHAR(255)"
+	}
+	if columnName == "_id" {
+		colDataType += " PRIMARY KEY"
+	}
+	return colDataType
+}
+func generateCreateTabelSQL(oplogObj OplogEntry) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("CREATE TABLE %s (", oplogObj.NS))
+
+	columnNames := getColumnNames(oplogObj.O)
+
+	sep := ""
+	for _, columnName := range columnNames {
+		value := oplogObj.O[columnName]
+		colDataType := getColumnSQLDataType(columnName, value)
+
+		sb.WriteString(fmt.Sprintf("%s%s %s", sep, columnName, colDataType))
+		sep = ", "
+	}
+	sb.WriteString(");")
+	return sb.String()
+
+}
+func GenerateSQL(oplog string) ([]string, error) {
 	var oplogObj OplogEntry
 	// []byte(var) converts the var string to array of byte
+	sqls := []string{}
+
 	if err := json.Unmarshal([]byte(oplog), &oplogObj); err != nil {
-		return "", err
+		return sqls, err
 	}
 	switch oplogObj.Op {
 	case "i":
-		return generateInsertSQL(oplogObj)
+		//create schema
+		sqls = generateCreateSchemaSQL(oplogObj, sqls)
+		//create table
+		sqls = append(sqls, generateCreateTabelSQL(oplogObj))
+		sql, err := generateInsertSQL(oplogObj)
+		if err != nil {
+			return sqls, err
+		}
+		sqls = append(sqls, sql)
 	case "u":
-		return generateUpdateSQL(oplogObj)
+		sql, err := generateUpdateSQL(oplogObj)
+		if err != nil {
+			return sqls, err
+		}
+		sqls = append(sqls, sql)
 	case "d":
-		return generateDeleteSQL(oplogObj)
+		sql, err := generateDeleteSQL(oplogObj)
+		if err != nil {
+			return sqls, err
+		}
+		sqls = append(sqls, sql)
 	}
 
-	return "", fmt.Errorf("invalid oplog")
+	return sqls, nil
 }
 
 func generateInsertSQL(oplogObj OplogEntry) (string, error) {
@@ -118,4 +176,12 @@ func getColumnValues(value interface{}) string {
 	default:
 		return fmt.Sprintf("'%v'", value)
 	}
+}
+func getColumnNames(data map[string]interface{}) []string {
+	columnNames := make([]string, 0, len(data))
+	for columnName, _ := range data {
+		columnNames = append(columnNames, columnName)
+	}
+	sort.Strings(columnNames)
+	return columnNames
 }

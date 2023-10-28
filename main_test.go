@@ -29,7 +29,10 @@ func TestGenerateInsertSQL(t *testing.T) {
 			  "date_of_birth" : "2000-01-30"
 			}
 		  }`,
-			want:    []string{"INSERT INTO test.student (_id, date_of_birth, is_graduated, name, roll_no) VALUES ('635b79e231d82a8ab1de863b', '2000-01-30', false, 'Selena Miller', 51);"},
+			want: []string{
+				"CREATE SCHEMA test;",
+				"CREATE TABLE test.student (_id VARCHAR(255) PRIMARY KEY, date_of_birth VARCHAR(255), is_graduated BOOLEAN, name VARCHAR(255), roll_no FLOAT);",
+				"INSERT INTO test.student (_id, date_of_birth, is_graduated, name, roll_no) VALUES ('635b79e231d82a8ab1de863b', '2000-01-30', false, 'Selena Miller', 51);"},
 			wantErr: false},
 		{name: "Update Operation -set", oplog: `{
 				"op": "u",
