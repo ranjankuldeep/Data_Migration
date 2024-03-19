@@ -1,2 +1,2 @@
 # Data_Migration
-Go project for migrating data from mongoDb to PostgresSql with creating pipelines.
+Go project for migrating data from MongoDB to PostgreSQL with pipelines.
